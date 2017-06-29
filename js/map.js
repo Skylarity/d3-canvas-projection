@@ -1,10 +1,12 @@
 mapboxgl.accessToken = 'pk.eyJ1Ijoic2t5bGFyaXR5IiwiYSI6ImNpczI4ZHBmbzAwMzgyeWxrZmZnMGI5ZXYifQ.1-jGFvM11OgVgYkz3WvoNw'
 var map = new mapboxgl.Map({
 	container: 'map',
-	style: 'mapbox://styles/mapbox/light-v9',
-	center: [-106.6056, 35.0853],
-	zoom: 11
+	style: 'mapbox://styles/mapbox/dark-v9',
+	center: [-106.1, 34.5],
+	zoom: 6
 })
+map.dragRotate.disable();
+map.touchZoomRotate.disableRotation();
 
 var bbox = document.body.getBoundingClientRect()
 var width = bbox.width
@@ -33,13 +35,34 @@ function getD3() {
 	return d3projection
 }
 
-var d3projection = getD3() // Why is this here?
+var d3projection = getD3()
 
-var path = d3.geoPath() // Why is this here?
+var path = d3.geoPath()
 
-var data = turf.random('polygons', 10, {
-	bbox: [-105, 34, -107, 36]
+var minHexSize = 1,
+	maxHexSize = 6;
+
+var colorScale = d3.scaleQuantile()
+	.domain([minHexSize, maxHexSize])
+	.range(["rgba(0,162,200, 0.5)", "rgba(0,71,182, 0.5)", "rgba(163,6,201, 0.5)", "rgba(219,10,108, 0.5)", "rgba(221,6,18, 0.5)"]);
+var sizingScale = d3.scaleLinear()
+	.domain([minHexSize, maxHexSize])
+	.range([0.1, 1]);
+
+var data = turf.hexGrid([-109, 37, -103, 32], 6, 'miles')
+
+data.features.map(function(feature) {
+	feature.properties = {
+		size: (Math.random() * (maxHexSize - minHexSize)) + minHexSize,
+		flooded: Math.random() > .9 ? true : false
+	}
+
+	feature.geometry = turf.transformScale(feature.geometry, sizingScale(feature.properties.size))
+
+	return feature
 })
+
+// console.log(data)
 
 //***** Begin what would be in a d3.json call if you were using a json file
 function render() {
@@ -48,32 +71,36 @@ function render() {
 
 	ctx.clearRect(0, 0, width, height)
 
-	ctx.fillStyle = 'rgba(42, 100, 255, 0.5)'
-	ctx.strokeStyle = 'rgba(42, 42, 42, 0.75)'
+	ctx.strokeStyle = 'rgba(255, 255, 255, .5)'
+	ctx.lineWidth = 2
 
 	data.features.forEach(function(d) {
+		ctx.fillStyle = colorScale(d.properties.size)
+
 		var polygons = []
-		d.geometry.coordinates.forEach(function(coords) {
-			coordSet = []
-			coords.forEach(function(coordPair) {
-				coordSet.push(d3projection(coordPair))
+        d.geometry.coordinates.forEach(function(coords) {
+            coordSet = []
+            coords.forEach(function(coordPair) {
+                coordSet.push(d3projection(coordPair))
 			})
 			polygons.push(coordSet)
 		})
-		// console.log(polygons)
 
 		ctx.beginPath()
 		polygons.forEach(function(coords) {
 			// console.log(coords)
 			ctx.moveTo(coords[0][0], coords[0][1])
 			coords.forEach(function(coord) {
+				// console.log(coord)
 				ctx.lineTo(coord[0], coord[1])
 			})
 		})
 		// ctx.arc(coords[0], coords[1], 6, 0, Math.PI * 2)
 		ctx.closePath()
 		ctx.fill()
-		ctx.stroke()
+		if (d.properties.flooded) {
+			ctx.stroke()
+		}
 	})
 }
 
