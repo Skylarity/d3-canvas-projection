@@ -15,8 +15,17 @@ var height = bbox.height
 var container = map.getCanvasContainer()
 
 var canvas = d3.select(container).append('canvas').node()
-canvas.width = width
-canvas.height = height
+
+function resizeCanvas() {
+	bbox = document.body.getBoundingClientRect()
+
+	width = bbox.width
+	height = bbox.height
+
+	canvas.width = width
+	canvas.height = height
+}
+resizeCanvas()
 
 var ctx = canvas.getContext('2d')
 
@@ -105,9 +114,11 @@ function render() {
 }
 
 map.on('viewreset', function() {
+	resizeCanvas()
 	render()
 })
 map.on('move', function() {
+	resizeCanvas()
 	render()
 })
 
