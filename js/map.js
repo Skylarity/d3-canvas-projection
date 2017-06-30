@@ -3,7 +3,7 @@ var map = new mapboxgl.Map({
 	container: 'map',
 	style: 'mapbox://styles/mapbox/dark-v9',
 	center: [-106.1, 34.5],
-	zoom: 6
+	zoom: 10
 })
 map.dragRotate.disable();
 map.touchZoomRotate.disableRotation();
@@ -26,6 +26,14 @@ function resizeCanvas() {
 	canvas.height = height
 }
 resizeCanvas()
+
+function getMousePos(event) {
+	var canvasBB = canvas.getBoundingClientRect();
+	return {
+		x: Math.floor((event.clientX-canvasBB.left)/(canvasBB.right-canvasBB.left)*canvas.width),
+		y: Math.floor((event.clientY-canvasBB.top)/(canvasBB.bottom-canvasBB.top)*canvas.height)
+	};
+}
 
 var ctx = canvas.getContext('2d')
 
@@ -74,7 +82,12 @@ data.features.map(function(feature) {
 // console.log(data)
 
 //***** Begin what would be in a d3.json call if you were using a json file
-function render() {
+function render(event, clicked) {
+	var mousePos = null
+	if (event) {
+		mousePos = getMousePos(event)
+	}
+
 	d3projection = getD3()
 	path.projection(d3projection)
 
@@ -84,18 +97,18 @@ function render() {
 	ctx.lineWidth = 2
 
 	data.features.forEach(function(d) {
-		ctx.fillStyle = colorScale(d.properties.size)
-
 		var polygons = []
-        d.geometry.coordinates.forEach(function(coords) {
-            coordSet = []
-            coords.forEach(function(coordPair) {
-                coordSet.push(d3projection(coordPair))
+		d.geometry.coordinates.forEach(function(coords) {
+			coordSet = []
+			coords.forEach(function(coordPair) {
+				coordSet.push(d3projection(coordPair))
 			})
 			polygons.push(coordSet)
 		})
 
+		// BEGIN PATH ********************
 		ctx.beginPath()
+
 		polygons.forEach(function(coords) {
 			// console.log(coords)
 			ctx.moveTo(coords[0][0], coords[0][1])
@@ -104,23 +117,62 @@ function render() {
 				ctx.lineTo(coord[0], coord[1])
 			})
 		})
-		// ctx.arc(coords[0], coords[1], 6, 0, Math.PI * 2)
-		ctx.closePath()
+
+		var hovering = mousePos ? ctx.isPointInPath(mousePos.x, mousePos.y) : false
+		ctx.fillStyle = mousePos && hovering ? 'rgba(255, 255, 255, 0.5)' : colorScale(d.properties.size)
+
+		// console.log(hovering)
+		if (hovering) {
+			canvas.style.cursor = 'pointer'
+			if (clicked) {
+				// Create tooltip if clicked // TODO
+				console.log('clicked!')
+				ctx.fillStyle = '#fff'
+			}
+		} else {
+			canvas.style.cursor = 'grab'
+		}
+
 		ctx.fill()
 		if (d.properties.flooded) {
 			ctx.stroke()
 		}
+
+		// CLOSE PATH ********************
+		ctx.closePath()
 	})
 }
 
-map.on('viewreset', function() {
+function drawMap(event, clicked) {
 	resizeCanvas()
-	render()
+	render(event, clicked)
+}
+
+map.on('viewreset', function() {
+	drawMap()
 })
 map.on('move', function() {
-	resizeCanvas()
-	render()
+	drawMap()
 })
 
-render()
+var dragged = false
+canvas.addEventListener('mousedown', function(event) {
+	dragged = false
+
+	drawMap(event)
+})
+canvas.addEventListener('mousemove', function(event) {
+	dragged = true
+
+	drawMap(event)
+})
+canvas.addEventListener('mouseup', function(event) {
+	if (!dragged) {
+		drawMap(event, true)
+	} else {
+		drawMap(event)
+	}
+})
+
+drawMap()
 //***** End the fictional d3.json call
