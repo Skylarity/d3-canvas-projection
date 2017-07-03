@@ -5,8 +5,12 @@ var map = new mapboxgl.Map({
 	center: [-106.1, 34.5],
 	zoom: 10
 })
-map.dragRotate.disable();
-map.touchZoomRotate.disableRotation();
+map.dragRotate.disable()
+map.touchZoomRotate.disableRotation()
+
+var toolTipPos = {
+	id: 0
+}
 
 var bbox = document.body.getBoundingClientRect()
 var width = bbox.width
@@ -28,11 +32,11 @@ function resizeCanvas() {
 resizeCanvas()
 
 function getMousePos(event) {
-	var canvasBB = canvas.getBoundingClientRect();
+	var canvasBB = canvas.getBoundingClientRect()
 	return {
 		x: Math.floor((event.clientX-canvasBB.left)/(canvasBB.right-canvasBB.left)*canvas.width),
 		y: Math.floor((event.clientY-canvasBB.top)/(canvasBB.bottom-canvasBB.top)*canvas.height)
-	};
+	}
 }
 
 var ctx = canvas.getContext('2d')
@@ -57,14 +61,14 @@ var d3projection = getD3()
 var path = d3.geoPath()
 
 var minHexSize = 1,
-	maxHexSize = 6;
+	maxHexSize = 6
 
 var colorScale = d3.scaleQuantile()
 	.domain([minHexSize, maxHexSize])
-	.range(["rgba(0,162,200, 0.5)", "rgba(0,71,182, 0.5)", "rgba(163,6,201, 0.5)", "rgba(219,10,108, 0.5)", "rgba(221,6,18, 0.5)"]);
+	.range(["rgba(0,162,200, 0.5)", "rgba(0,71,182, 0.5)", "rgba(163,6,201, 0.5)", "rgba(219,10,108, 0.5)", "rgba(221,6,18, 0.5)"])
 var sizingScale = d3.scaleLinear()
 	.domain([minHexSize, maxHexSize])
-	.range([0.1, 1]);
+	.range([0.1, 1])
 
 var data = turf.hexGrid([-109, 37, -103, 32], 6, 'miles')
 
@@ -96,7 +100,7 @@ function render(event, clicked) {
 	ctx.strokeStyle = 'rgba(255, 255, 255, .5)'
 	ctx.lineWidth = 2
 
-	data.features.forEach(function(d) {
+	data.features.forEach(function(d, i) {
 		var polygons = []
 		d.geometry.coordinates.forEach(function(coords) {
 			coordSet = []
@@ -125,9 +129,10 @@ function render(event, clicked) {
 		if (hovering) {
 			canvas.style.cursor = 'pointer'
 			if (clicked) {
-				// Create tooltip if clicked // TODO
-				console.log('clicked!')
 				ctx.fillStyle = '#fff'
+
+				toolTipPos.id = i
+				createToolTip()
 			}
 		} else {
 			canvas.style.cursor = 'grab'
@@ -143,9 +148,58 @@ function render(event, clicked) {
 	})
 }
 
+function getHexCentroidFromId(id) {
+	var pos = turf.centroid(data.features[id])
+	pos = d3projection(pos.geometry.coordinates)
+
+	toolTipPos.x = pos[0]
+	toolTipPos.y = pos[1]
+}
+
+function createToolTip() {
+	removeToolTip()
+
+	var toolTip = document.createElement('div')
+	getHexCentroidFromId(toolTipPos.id)
+
+	toolTip.id = 'toolTip'
+	toolTip.style.left = toolTipPos.x + 'px'
+	toolTip.style.top = toolTipPos.y + 'px'
+	toolTip.style.opacity = 1;
+
+	var xhr= new XMLHttpRequest();
+	xhr.open('GET', 'templates/tooltip.html', true);
+	xhr.onreadystatechange= function() {
+		if (this.readyState !== 4) return;
+		if (this.status !== 200) return;
+		toolTip.innerHTML = this.responseText;
+	};
+	xhr.send();
+
+	document.getElementById('map').appendChild(toolTip)
+}
+
+function removeToolTip() {
+	var toolTip = document.getElementById('toolTip')
+	if (toolTip) {
+		toolTip.parentNode.removeChild(toolTip)
+	}
+}
+
+function updateToolTip() {
+	var toolTip = document.getElementById('toolTip')
+	var pos = getHexCentroidFromId(toolTipPos.id)
+
+	if (toolTip) {
+		toolTip.style.left = toolTipPos.x + 'px'
+		toolTip.style.top = toolTipPos.y + 'px'
+	}
+}
+
 function drawMap(event, clicked) {
 	resizeCanvas()
 	render(event, clicked)
+	updateToolTip()
 }
 
 map.on('viewreset', function() {
