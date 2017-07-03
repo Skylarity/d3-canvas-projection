@@ -100,6 +100,8 @@ function render(event, clicked) {
 	ctx.strokeStyle = 'rgba(255, 255, 255, .5)'
 	ctx.lineWidth = 2
 
+	var hovering = false
+
 	data.features.forEach(function(d, i) {
 		var polygons = []
 		d.geometry.coordinates.forEach(function(coords) {
@@ -122,20 +124,25 @@ function render(event, clicked) {
 			})
 		})
 
-		var hovering = mousePos ? ctx.isPointInPath(mousePos.x, mousePos.y) : false
-		ctx.fillStyle = mousePos && hovering ? 'rgba(255, 255, 255, 0.5)' : colorScale(d.properties.size)
+		var hoveringCurrent = mousePos ? ctx.isPointInPath(mousePos.x, mousePos.y) : false
+		ctx.fillStyle = mousePos && hoveringCurrent ? 'rgba(255, 255, 255, 0.5)' : colorScale(d.properties.size)
 
-		// console.log(hovering)
-		if (hovering) {
-			canvas.style.cursor = 'pointer'
-			if (clicked) {
+		// console.log(hoveringCurrent)
+		if (hoveringCurrent) {
+			hovering = true
+
+			if (clicked && event.which === 1) {
 				ctx.fillStyle = '#fff'
 
 				toolTipPos.id = i
 				createToolTip()
 			}
+		}
+
+		if (hovering) {
+			canvas.className = 'hovering'
 		} else {
-			canvas.style.cursor = 'grab'
+			canvas.className = ''
 		}
 
 		ctx.fill()

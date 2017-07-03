@@ -9,6 +9,10 @@ canvas {
 	height: 100%;
 }
 
+canvas.hovering {
+	cursor: pointer;
+}
+
 #toolTip {
 	position: fixed;
 	padding: 1rem;
