@@ -20,6 +20,8 @@ canvas {
 	opacity: 0;
 
 	transition: .5s opacity;
+
+	pointer-events: none;
 }
 
 #toolTip .close-btn {
@@ -32,4 +34,6 @@ canvas {
 	font-size: 1.2rem;
 
 	cursor: pointer;
+
+	pointer-events: all;
 }
